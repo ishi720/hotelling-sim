@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
 
   app: {
+    baseURL: '/hotelling-sim/',
     head: {
       title: "ホテリングの法則シミュレーション",
       meta: [
