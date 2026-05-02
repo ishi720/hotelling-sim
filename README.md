@@ -4,6 +4,8 @@
 
 ホテリングの法則とは、競合する企業が互いに立地を近づけていく傾向を説明する経済学の原理です。
 
+<img width="573" height="572" alt="image" src="https://github.com/user-attachments/assets/26d9de9e-70ed-40bf-be51-114aec75cacc" />
+
 
 ## 技術スタック
 
