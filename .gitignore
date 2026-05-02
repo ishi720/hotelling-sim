@@ -1,0 +1,30 @@
+# Nuxt
+.nuxt/
+.output/
+.nitro/
+.cache/
+
+# 依存パッケージ
+node_modules/
+
+# 環境変数
+.env
+.env.*
+!.env.example
+
+# ビルド成果物
+dist/
+
+# ログ
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.idea/
+*.swp
+*.swo
