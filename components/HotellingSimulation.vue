@@ -5,6 +5,23 @@ import { ref, computed, watch, onMounted } from "vue";
 const N = 80;
 const PX = 560;
 const S = PX / N;
+const STORE_COUNT = 5;
+const LABELS = ["A", "B", "C", "D", "E"];
+const COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7"];
+const AREA_COLORS = [
+  "rgba(59,130,246,0.22)",
+  "rgba(239,68,68,0.22)",
+  "rgba(34,197,94,0.22)",
+  "rgba(245,158,11,0.22)",
+  "rgba(168,85,247,0.22)",
+];
+const DOT_COLORS = [
+  "rgba(147,197,253,0.9)",
+  "rgba(252,165,165,0.9)",
+  "rgba(134,239,172,0.9)",
+  "rgba(252,211,77,0.9)",
+  "rgba(216,180,254,0.9)",
+];
 
 // 型
 interface Point {
@@ -12,8 +29,7 @@ interface Point {
   y: number;
 }
 interface SimState {
-  storeA: Point;
-  storeB: Point;
+  stores: Point[];
   people: Point[];
 }
 
@@ -34,33 +50,43 @@ function randomPoint(used: Set<string>): Point {
   return { x, y };
 }
 
+function nearestStore(p: Point, stores: Point[]): number {
+  let minD = Infinity, idx = 0;
+  for (let i = 0; i < stores.length; i++) {
+    const d = dist(p, stores[i]);
+    if (d < minD) { minD = d; idx = i; }
+  }
+  return idx;
+}
+
 function createSim(n: number): SimState {
   const used = new Set<string>();
-  const storeA = randomPoint(used);
-  const storeB = randomPoint(used);
+  const stores = Array.from({ length: STORE_COUNT }, () => randomPoint(used));
   const people = Array.from({ length: n }, () => randomPoint(used));
-  return { storeA, storeB, people };
+  return { stores, people };
 }
 
 // リアクティブ状態
 const count = ref(100);
 const sim = ref<SimState>(createSim(100));
-const drag = ref<"A" | "B" | null>(null);
+const drag = ref<number | null>(null);
 const cvRef = ref<HTMLCanvasElement | null>(null);
 
 // 計算プロパティ
-const cA = computed(() =>
-  sim.value.people.filter(
-    (p) => dist(p, sim.value.storeA) <= dist(p, sim.value.storeB)
-  ).length
+const counts = computed(() => {
+  const c = Array(STORE_COUNT).fill(0);
+  for (const p of sim.value.people) {
+    c[nearestStore(p, sim.value.stores)]++;
+  }
+  return c;
+});
+const percents = computed(() =>
+  counts.value.map((c) =>
+    sim.value.people.length
+      ? Math.round((c / sim.value.people.length) * 100)
+      : 0
+  )
 );
-const cB = computed(() => sim.value.people.length - cA.value);
-const pA = computed(() =>
-  sim.value.people.length
-    ? Math.round((cA.value / sim.value.people.length) * 100)
-    : 0
-);
-const pB = computed(() => 100 - pA.value);
 
 // Canvas 描画
 function draw() {
@@ -69,17 +95,17 @@ function draw() {
   const ctx = cv.getContext("2d");
   if (!ctx) return;
 
-  const { storeA, storeB, people } = sim.value;
+  const { stores, people } = sim.value;
 
   // 背景
   ctx.fillStyle = "#111827";
   ctx.fillRect(0, 0, PX, PX);
 
-  // エリア色分け（ボロノイ領域）
+  // ボロノイ領域
   for (let x = 0; x < N; x++) {
     for (let y = 0; y < N; y++) {
-      const isA = dist({ x, y }, storeA) <= dist({ x, y }, storeB);
-      ctx.fillStyle = isA ? "rgba(59,130,246,0.22)" : "rgba(239,68,68,0.22)";
+      const idx = nearestStore({ x, y }, stores);
+      ctx.fillStyle = AREA_COLORS[idx];
       ctx.fillRect(x * S, y * S, S, S);
     }
   }
@@ -100,20 +126,20 @@ function draw() {
 
   // 住民ドット
   for (const p of people) {
-    const isA = dist(p, storeA) <= dist(p, storeB);
+    const idx = nearestStore(p, stores);
     ctx.beginPath();
     ctx.arc(toPx(p.x), toPx(p.y), 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = isA ? "rgba(147,197,253,0.9)" : "rgba(252,165,165,0.9)";
+    ctx.fillStyle = DOT_COLORS[idx];
     ctx.fill();
   }
 
   // 店舗マーカー
-  const drawStore = (s: Point, label: string, color: string) => {
-    const cx = toPx(s.x);
-    const cy = toPx(s.y);
+  for (let i = 0; i < stores.length; i++) {
+    const cx = toPx(stores[i].x);
+    const cy = toPx(stores[i].y);
     ctx.beginPath();
     ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-    ctx.fillStyle = color;
+    ctx.fillStyle = COLORS[i];
     ctx.fill();
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
@@ -122,11 +148,8 @@ function draw() {
     ctx.font = "bold 13px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(label, cx, cy);
-  };
-
-  drawStore(storeA, "A", "#3b82f6");
-  drawStore(storeB, "B", "#ef4444");
+    ctx.fillText(LABELS[i], cx, cy);
+  }
 }
 
 watch(sim, draw, { deep: true });
@@ -144,23 +167,26 @@ function getPos(e: MouseEvent | TouchEvent): Point {
 
 function onDown(e: MouseEvent | TouchEvent) {
   const pos = getPos(e);
-  if (dist(pos, sim.value.storeA) < 4) {
-    drag.value = "A";
-    e.preventDefault();
-  } else if (dist(pos, sim.value.storeB) < 4) {
-    drag.value = "B";
+  const idx = sim.value.stores.findIndex((s) => dist(pos, s) < 4);
+  if (idx !== -1) {
+    drag.value = idx;
     e.preventDefault();
   }
 }
 
 function onMove(e: MouseEvent | TouchEvent) {
-  if (!drag.value) return;
+  if (drag.value === null) return;
   e.preventDefault();
   const pos = getPos(e);
-  const other =
-    drag.value === "A" ? sim.value.storeB : sim.value.storeA;
-  if (pos.x === other.x && pos.y === other.y) return;
-  sim.value = { ...sim.value, [`store${drag.value}`]: pos };
+  if (
+    sim.value.stores.some(
+      (s, i) => i !== drag.value && s.x === pos.x && s.y === pos.y
+    )
+  )
+    return;
+  const stores = [...sim.value.stores];
+  stores[drag.value] = pos;
+  sim.value = { ...sim.value, stores };
 }
 
 function onUp() {
@@ -202,7 +228,7 @@ function randomize() {
           :style="{
             width: '100%',
             maxWidth: `${PX}px`,
-            cursor: drag ? 'grabbing' : 'grab',
+            cursor: drag !== null ? 'grabbing' : 'grab',
           }"
           @mousedown="onDown"
           @mousemove="onMove"
@@ -222,34 +248,24 @@ function randomize() {
             市場シェア
           </p>
 
-          <div class="mb-3">
+          <div
+            v-for="(label, i) in LABELS"
+            :key="label"
+            class="mb-3 last:mb-0"
+          >
             <div class="flex justify-between items-baseline mb-1">
-              <span class="text-blue-400 text-sm font-medium">店舗 A</span>
-              <span class="text-blue-400">
-                {{ cA }}
-                <span class="text-gray-500 text-xs ml-1">({{ pA }}%)</span>
+              <span class="text-sm font-medium" :style="{ color: COLORS[i] }">
+                店舗 {{ label }}
+              </span>
+              <span :style="{ color: COLORS[i] }">
+                {{ counts[i] }}
+                <span class="text-gray-500 text-xs ml-1">({{ percents[i] }}%)</span>
               </span>
             </div>
             <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
               <div
-                class="h-full bg-blue-500 rounded-full transition-all duration-300"
-                :style="{ width: `${pA}%` }"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div class="flex justify-between items-baseline mb-1">
-              <span class="text-red-400 text-sm font-medium">店舗 B</span>
-              <span class="text-red-400">
-                {{ cB }}
-                <span class="text-gray-500 text-xs ml-1">({{ pB }}%)</span>
-              </span>
-            </div>
-            <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-              <div
-                class="h-full bg-red-500 rounded-full transition-all duration-300"
-                :style="{ width: `${pB}%` }"
+                class="h-full rounded-full transition-all duration-300"
+                :style="{ width: `${percents[i]}%`, backgroundColor: COLORS[i] }"
               />
             </div>
           </div>
@@ -290,7 +306,7 @@ function randomize() {
             使い方
           </p>
           <p class="text-xs text-gray-400 leading-relaxed">
-            店舗 A・B をドラッグして位置を変更できます。各住民は最も近い店舗を利用します。
+            店舗 A〜E をドラッグして位置を変更できます。各住民は最も近い店舗を利用します。
           </p>
         </div>
 
