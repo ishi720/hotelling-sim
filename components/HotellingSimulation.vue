@@ -36,6 +36,7 @@ interface SimState {
 // ユーティリティ
 const dist = (a: Point, b: Point) =>
   Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+const dist2 = (a: Point, b: Point) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
 const toPx = (v: number) => (v + 0.5) * S;
 const toGrid = (px: number) => Math.max(0, Math.min(N - 1, Math.floor(px / S)));
 
@@ -193,6 +194,56 @@ function onUp() {
   drag.value = null;
 }
 
+// 最適位置探索（他店舗を固定し顧客数が最大になるグリッドセルを返す）
+function findBestPosition(storeIdx: number): Point {
+  const { stores, people } = sim.value;
+  // 各住民から「対象店舗以外」への最小距離²を事前計算
+  const minOtherDist2 = people.map((p) =>
+    Math.min(
+      ...stores
+        .filter((_, i) => i !== storeIdx)
+        .map((s) => dist2(p, s))
+    )
+  );
+  let best = stores[storeIdx];
+  let bestCount = -1;
+  for (let x = 0; x < N; x++) {
+    for (let y = 0; y < N; y++) {
+      if (stores.some((s, i) => i !== storeIdx && s.x === x && s.y === y)) continue;
+      const cand = { x, y };
+      let c = 0;
+      for (let pi = 0; pi < people.length; pi++) {
+        if (dist2(people[pi], cand) <= minOtherDist2[pi]) c++;
+      }
+      if (c > bestCount) { bestCount = c; best = cand; }
+    }
+  }
+  return best;
+}
+
+const animating = ref<boolean[]>(Array(STORE_COUNT).fill(false));
+
+async function moveToBest(storeIdx: number) {
+  if (animating.value[storeIdx]) return;
+  const target = findBestPosition(storeIdx);
+  animating.value = animating.value.map((v, i) => (i === storeIdx ? true : v));
+
+  while (true) {
+    const current = sim.value.stores[storeIdx];
+    if (current.x === target.x && current.y === target.y) break;
+    const next = {
+      x: current.x + Math.sign(target.x - current.x),
+      y: current.y + Math.sign(target.y - current.y),
+    };
+    const stores = [...sim.value.stores];
+    stores[storeIdx] = next;
+    sim.value = { ...sim.value, stores };
+    await new Promise((r) => setTimeout(r, 20));
+  }
+
+  animating.value = animating.value.map((v, i) => (i === storeIdx ? false : v));
+}
+
 // コントロール
 function handleCount(v: number) {
   const n = Math.max(10, Math.min(500, v));
@@ -254,9 +305,24 @@ function randomize() {
             class="mb-3 last:mb-0"
           >
             <div class="flex justify-between items-baseline mb-1">
-              <span class="text-sm font-medium" :style="{ color: COLORS[i] }">
-                店舗 {{ label }}
-              </span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-medium" :style="{ color: COLORS[i] }">
+                  店舗 {{ label }}
+                </span>
+                <button
+                  class="text-[10px] px-1.5 py-0.5 rounded border transition-opacity"
+                  :style="{
+                    color: animating[i] ? '#6b7280' : COLORS[i],
+                    borderColor: animating[i] ? '#6b728066' : COLORS[i] + '66',
+                  }"
+                  :disabled="animating[i]"
+                  :class="animating[i] ? 'cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'"
+                  @click="moveToBest(i)"
+                  title="顧客数が最大になる位置へ移動"
+                >
+                  {{ animating[i] ? '移動中…' : '最適化' }}
+                </button>
+              </div>
               <span :style="{ color: COLORS[i] }">
                 {{ counts[i] }}
                 <span class="text-gray-500 text-xs ml-1">({{ percents[i] }}%)</span>
