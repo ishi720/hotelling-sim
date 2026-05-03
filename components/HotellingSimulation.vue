@@ -274,20 +274,46 @@ async function runAutoSim() {
   simRunning.value = false;
 }
 
+// 現在の配置から使用済み座標セットを生成
+function usedPositions(): Set<string> {
+  const s = sim.value;
+  return new Set<string>([
+    ...s.stores.map((p) => `${p.x},${p.y}`),
+    ...s.people.map((p) => `${p.x},${p.y}`),
+  ]);
+}
+
 // コントロール
 function handleStoreCount(v: number) {
   const sc = Math.max(2, Math.min(5, v));
-  storeCount.value = sc;
-  animating.value = Array(sc).fill(false);
   simRunning.value = false;
   simProgress.value = 0;
-  sim.value = createSim(count.value, sc);
+  if (sc > storeCount.value) {
+    const used = usedPositions();
+    const stores = [...sim.value.stores];
+    for (let i = storeCount.value; i < sc; i++) stores.push(randomPoint(used));
+    storeCount.value = sc;
+    animating.value = Array(sc).fill(false);
+    sim.value = { ...sim.value, stores };
+  } else {
+    storeCount.value = sc;
+    animating.value = Array(sc).fill(false);
+    sim.value = { ...sim.value, stores: sim.value.stores.slice(0, sc) };
+  }
 }
 
 function handleCount(v: number) {
   const n = Math.max(10, Math.min(500, v));
-  count.value = n;
-  sim.value = createSim(n);
+  if (n > count.value) {
+    const used = usedPositions();
+    const people = [...sim.value.people];
+    for (let i = count.value; i < n; i++) people.push(randomPoint(used));
+    count.value = n;
+    sim.value = { ...sim.value, people };
+  } else {
+    count.value = n;
+    sim.value = { ...sim.value, people: sim.value.people.slice(0, n) };
+  }
 }
 
 function randomize() {
