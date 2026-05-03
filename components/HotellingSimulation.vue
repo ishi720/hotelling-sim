@@ -206,6 +206,8 @@ function onMove(e: MouseEvent | TouchEvent) {
   }
   e.preventDefault();
   const pos = getPos(e);
+  if (sim.value.stores.some((s, i) => i !== drag.value && s.x === pos.x && s.y === pos.y)) return;
+  if (sim.value.people.some((p) => p.x === pos.x && p.y === pos.y)) return;
   const stores = [...sim.value.stores];
   stores[drag.value] = pos;
   sim.value = { ...sim.value, stores };
