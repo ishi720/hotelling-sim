@@ -5,7 +5,6 @@ import { ref, computed, watch, onMounted, toRaw } from "vue";
 const N = 80;
 const PX = 560;
 const S = PX / N;
-const STORE_COUNT = 5;
 const LABELS = ["A", "B", "C", "D", "E"];
 const COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7"];
 const AREA_COLORS = [
@@ -60,14 +59,15 @@ function nearestStore(p: Point, stores: Point[]): number {
   return idx;
 }
 
-function createSim(n: number): SimState {
+function createSim(n: number, sc = storeCount.value): SimState {
   const used = new Set<string>();
-  const stores = Array.from({ length: STORE_COUNT }, () => randomPoint(used));
+  const stores = Array.from({ length: sc }, () => randomPoint(used));
   const people = Array.from({ length: n }, () => randomPoint(used));
   return { stores, people };
 }
 
 // リアクティブ状態
+const storeCount = ref(3);
 const count = ref(100);
 const sim = ref<SimState>(createSim(100));
 const drag = ref<number | null>(null);
@@ -75,7 +75,7 @@ const cvRef = ref<HTMLCanvasElement | null>(null);
 
 // 計算プロパティ
 const counts = computed(() => {
-  const c = Array(STORE_COUNT).fill(0);
+  const c = Array(sim.value.stores.length).fill(0);
   for (const p of sim.value.people) {
     c[nearestStore(p, sim.value.stores)]++;
   }
@@ -230,7 +230,7 @@ async function findBestPosition(storeIdx: number): Promise<Point> {
   return best;
 }
 
-const animating = ref<boolean[]>(Array(STORE_COUNT).fill(false));
+const animating = ref<boolean[]>(Array(storeCount.value).fill(false));
 
 async function moveToBest(storeIdx: number) {
   if (animating.value[storeIdx]) return;
@@ -275,6 +275,15 @@ async function runAutoSim() {
 }
 
 // コントロール
+function handleStoreCount(v: number) {
+  const sc = Math.max(2, Math.min(5, v));
+  storeCount.value = sc;
+  animating.value = Array(sc).fill(false);
+  simRunning.value = false;
+  simProgress.value = 0;
+  sim.value = createSim(count.value, sc);
+}
+
 function handleCount(v: number) {
   const n = Math.max(10, Math.min(500, v));
   count.value = n;
@@ -325,12 +334,25 @@ function randomize() {
       <div class="flex flex-col gap-4 min-w-[220px]">
         <!-- マーケットシェア -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="text-xs text-gray-500 tracking-widest uppercase mb-3">
-            市場シェア
-          </p>
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs text-gray-500 tracking-widest uppercase">市場シェア</p>
+            <div class="flex items-center gap-1.5">
+              <button
+                class="w-5 h-5 rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                :disabled="storeCount <= 2"
+                @click="handleStoreCount(storeCount - 1)"
+              >－</button>
+              <span class="text-xs text-gray-400 w-3 text-center">{{ storeCount }}</span>
+              <button
+                class="w-5 h-5 rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                :disabled="storeCount >= 5"
+                @click="handleStoreCount(storeCount + 1)"
+              >＋</button>
+            </div>
+          </div>
 
           <div
-            v-for="(label, i) in LABELS"
+            v-for="(label, i) in LABELS.slice(0, sim.stores.length)"
             :key="label"
             class="mb-3 last:mb-0"
           >
@@ -432,7 +454,7 @@ function randomize() {
             使い方
           </p>
           <p class="text-xs text-gray-400 leading-relaxed">
-            店舗 A〜E をドラッグして位置を変更できます。各住民は最も近い店舗を利用します。
+            店舗をドラッグして位置を変更できます。各住民は最も近い店舗を利用します。
           </p>
         </div>
 
