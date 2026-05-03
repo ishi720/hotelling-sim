@@ -384,6 +384,37 @@ function randomize() {
 
       <!-- サイドパネル -->
       <div class="flex flex-col gap-4 min-w-[220px]">
+        <!-- ステップ実行 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs text-gray-500 tracking-widest uppercase">ステップ実行</p>
+            <label class="text-xs text-gray-400 flex items-center gap-1">
+              回数:
+              <input
+                type="number"
+                min="1"
+                max="9999"
+                :value="simCount"
+                class="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-white text-xs disabled:opacity-40"
+                :disabled="simRunning"
+                @change="simCount = Math.max(1, Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+          </div>
+          <button
+            class="w-full py-2 text-sm rounded-lg border transition-colors"
+            :class="simRunning
+              ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+              : 'border-green-500/40 text-green-400 hover:bg-green-500/10'"
+            @click="runAutoSim"
+          >
+            {{ simRunning ? '■ 停止' : '▶ 実行' }}
+          </button>
+          <div v-if="simRunning || simProgress > 0" class="mt-2 text-xs text-gray-500 text-center">
+            {{ simProgress }} / {{ simCount }}
+          </div>
+        </div>
+
         <!-- マーケットシェア -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
           <div class="flex items-center justify-between mb-3">
@@ -470,37 +501,6 @@ function randomize() {
           >
             ↺ ランダム再配置
           </button>
-        </div>
-
-        <!-- 自動最適化 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="text-xs text-gray-500 tracking-widest uppercase mb-3">
-            自動最適化
-          </p>
-          <label class="text-xs text-gray-400 block mb-2">
-            回数:
-            <input
-              type="number"
-              min="1"
-              max="9999"
-              :value="simCount"
-              class="ml-1 w-20 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-white text-xs disabled:opacity-40"
-              :disabled="simRunning"
-              @change="simCount = Math.max(1, Number(($event.target as HTMLInputElement).value))"
-            />
-          </label>
-          <button
-            class="w-full py-2 text-sm rounded-lg border transition-colors"
-            :class="simRunning
-              ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
-              : 'border-green-500/40 text-green-400 hover:bg-green-500/10'"
-            @click="runAutoSim"
-          >
-            {{ simRunning ? '■ 停止' : '▶ 実行' }}
-          </button>
-          <div v-if="simRunning || simProgress > 0" class="mt-2 text-xs text-gray-500 text-center">
-            {{ simProgress }} / {{ simCount }}
-          </div>
         </div>
 
         <!-- 使い方 -->
