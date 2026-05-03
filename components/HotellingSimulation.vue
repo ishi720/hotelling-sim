@@ -224,15 +224,16 @@ async function findBestPosition(storeIdx: number): Promise<Point> {
   const stores: Point[] = rawSim.stores.map((s) => ({ x: s.x, y: s.y }));
   const people: Point[] = rawSim.people.map((p) => ({ x: p.x, y: p.y }));
 
-  // 各住民から「対象店舗以外」への最小距離²を事前計算
-  const minOtherDist2 = people.map((p) => {
-    let min = Infinity;
+  // 各住民から「対象店舗以外」への最小距離²と、その店舗の最低インデックスを事前計算
+  // nearestStore は同距離なら低インデックス優先なので、その判定を再現する
+  const minOther = people.map((p) => {
+    let minD = Infinity, minI = Infinity;
     for (let i = 0; i < stores.length; i++) {
       if (i === storeIdx) continue;
       const d = dist2(p, stores[i]);
-      if (d < min) min = d;
+      if (d < minD || (d === minD && i < minI)) { minD = d; minI = i; }
     }
-    return min;
+    return { d: minD, i: minI };
   });
   let best: Point = { ...stores[storeIdx] };
   let bestCount = -1;
@@ -245,7 +246,9 @@ async function findBestPosition(storeIdx: number): Promise<Point> {
       for (let pi = 0; pi < people.length; pi++) {
         const dx = people[pi].x - x;
         const dy = people[pi].y - y;
-        if (dx * dx + dy * dy <= minOtherDist2[pi]) c++;
+        const d = dx * dx + dy * dy;
+        // 厳密に近い、または同距離でも自分のインデックスが低い場合に獲得
+        if (d < minOther[pi].d || (d === minOther[pi].d && storeIdx < minOther[pi].i)) c++;
       }
       if (c > bestCount) { bestCount = c; best = { x, y }; }
     }
