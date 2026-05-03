@@ -67,7 +67,7 @@ function createSim(n: number, sc = storeCount.value): SimState {
 }
 
 // リアクティブ状態
-const storeCount = ref(3);
+const storeCount = ref(2);
 const count = ref(100);
 const sim = ref<SimState>(createSim(100));
 const drag = ref<number | null>(null);
