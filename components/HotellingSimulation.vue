@@ -71,6 +71,7 @@ const storeCount = ref(3);
 const count = ref(100);
 const sim = ref<SimState>(createSim(100));
 const drag = ref<number | null>(null);
+const hovering = ref(false);
 const cvRef = ref<HTMLCanvasElement | null>(null);
 
 // 計算プロパティ
@@ -177,7 +178,13 @@ function onDown(e: MouseEvent | TouchEvent) {
 }
 
 function onMove(e: MouseEvent | TouchEvent) {
-  if (drag.value === null) return;
+  if (drag.value === null) {
+    if (!('touches' in e)) {
+      const pos = getPos(e);
+      hovering.value = sim.value.stores.some((s) => dist(pos, s) < 4);
+    }
+    return;
+  }
   e.preventDefault();
   const pos = getPos(e);
   if (
@@ -193,6 +200,7 @@ function onMove(e: MouseEvent | TouchEvent) {
 
 function onUp() {
   drag.value = null;
+  hovering.value = false;
 }
 
 // 最適位置探索（他店舗を固定し顧客数が最大になるグリッドセルを返す）
@@ -345,7 +353,7 @@ function randomize() {
           :style="{
             width: '100%',
             maxWidth: `${PX}px`,
-            cursor: drag !== null ? 'grabbing' : 'grab',
+            cursor: drag !== null ? 'grabbing' : hovering ? 'grab' : 'default',
           }"
           @mousedown="onDown"
           @mousemove="onMove"
