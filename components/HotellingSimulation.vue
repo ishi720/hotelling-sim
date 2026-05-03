@@ -167,6 +167,7 @@ function getPos(e: MouseEvent | TouchEvent): Point {
 }
 
 function onDown(e: MouseEvent | TouchEvent) {
+  if (simRunning.value) return;
   const pos = getPos(e);
   const idx = sim.value.stores.findIndex((s) => dist(pos, s) < 4);
   if (idx !== -1) {
@@ -365,13 +366,13 @@ function randomize() {
             <div class="flex items-center gap-1.5">
               <button
                 class="w-5 h-5 rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"
-                :disabled="storeCount <= 2"
+                :disabled="storeCount <= 2 || simRunning"
                 @click="handleStoreCount(storeCount - 1)"
               >－</button>
               <span class="text-xs text-gray-400 w-3 text-center">{{ storeCount }}</span>
               <button
                 class="w-5 h-5 rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"
-                :disabled="storeCount >= 5"
+                :disabled="storeCount >= 5 || simRunning"
                 @click="handleStoreCount(storeCount + 1)"
               >＋</button>
             </div>
@@ -393,8 +394,8 @@ function randomize() {
                     color: animating[i] ? '#6b7280' : COLORS[i],
                     borderColor: animating[i] ? '#6b728066' : COLORS[i] + '66',
                   }"
-                  :disabled="animating[i]"
-                  :class="animating[i] ? 'cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'"
+                  :disabled="animating[i] || simRunning"
+                  :class="animating[i] || simRunning ? 'cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'"
                   @click="moveToBest(i)"
                   title="顧客数が最大になる位置へ移動"
                 >
@@ -433,11 +434,13 @@ function randomize() {
             max="500"
             step="10"
             :value="count"
-            class="w-full accent-blue-500 mb-3"
+            :disabled="simRunning"
+            class="w-full accent-blue-500 mb-3 disabled:opacity-40"
             @input="handleCount(Number(($event.target as HTMLInputElement).value))"
           />
           <button
-            class="w-full py-2 text-sm rounded-lg border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 transition-colors"
+            class="w-full py-2 text-sm rounded-lg border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="simRunning"
             @click="randomize"
           >
             ↺ ランダム再配置
@@ -456,7 +459,8 @@ function randomize() {
               min="1"
               max="9999"
               :value="simCount"
-              class="ml-1 w-20 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-white text-xs"
+              class="ml-1 w-20 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-white text-xs disabled:opacity-40"
+              :disabled="simRunning"
               @change="simCount = Math.max(1, Number(($event.target as HTMLInputElement).value))"
             />
           </label>
