@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, toRaw } from "vue";
 
 // 定数
 const N = 80;
@@ -195,27 +195,36 @@ function onUp() {
 }
 
 // 最適位置探索（他店舗を固定し顧客数が最大になるグリッドセルを返す）
-function findBestPosition(storeIdx: number): Point {
-  const { stores, people } = sim.value;
+async function findBestPosition(storeIdx: number): Promise<Point> {
+  // リアクティブ参照を外し、計算中に状態が変わっても影響を受けない純粋な配列にコピー
+  const rawSim = toRaw(sim.value);
+  const stores: Point[] = rawSim.stores.map((s) => ({ x: s.x, y: s.y }));
+  const people: Point[] = rawSim.people.map((p) => ({ x: p.x, y: p.y }));
+
   // 各住民から「対象店舗以外」への最小距離²を事前計算
-  const minOtherDist2 = people.map((p) =>
-    Math.min(
-      ...stores
-        .filter((_, i) => i !== storeIdx)
-        .map((s) => dist2(p, s))
-    )
-  );
-  let best = stores[storeIdx];
+  const minOtherDist2 = people.map((p) => {
+    let min = Infinity;
+    for (let i = 0; i < stores.length; i++) {
+      if (i === storeIdx) continue;
+      const d = dist2(p, stores[i]);
+      if (d < min) min = d;
+    }
+    return min;
+  });
+  let best: Point = { ...stores[storeIdx] };
   let bestCount = -1;
   for (let x = 0; x < N; x++) {
+    // 16列ごとにブラウザへ制御を返してフリーズを防ぐ
+    if (x % 16 === 0) await new Promise<void>((r) => setTimeout(r, 0));
     for (let y = 0; y < N; y++) {
       if (stores.some((s, i) => i !== storeIdx && s.x === x && s.y === y)) continue;
-      const cand = { x, y };
       let c = 0;
       for (let pi = 0; pi < people.length; pi++) {
-        if (dist2(people[pi], cand) <= minOtherDist2[pi]) c++;
+        const dx = people[pi].x - x;
+        const dy = people[pi].y - y;
+        if (dx * dx + dy * dy <= minOtherDist2[pi]) c++;
       }
-      if (c > bestCount) { bestCount = c; best = cand; }
+      if (c > bestCount) { bestCount = c; best = { x, y }; }
     }
   }
   return best;
@@ -225,7 +234,7 @@ const animating = ref<boolean[]>(Array(STORE_COUNT).fill(false));
 
 async function moveToBest(storeIdx: number) {
   if (animating.value[storeIdx]) return;
-  const target = findBestPosition(storeIdx);
+  const target = await findBestPosition(storeIdx);
   animating.value = animating.value.map((v, i) => (i === storeIdx ? true : v));
 
   while (true) {
@@ -242,6 +251,27 @@ async function moveToBest(storeIdx: number) {
   }
 
   animating.value = animating.value.map((v, i) => (i === storeIdx ? false : v));
+}
+
+// 自動最適化
+const simCount = ref(100);
+const simRunning = ref(false);
+const simProgress = ref(0);
+
+async function runAutoSim() {
+  if (simRunning.value) {
+    simRunning.value = false;
+    return;
+  }
+  simRunning.value = true;
+  simProgress.value = 0;
+  for (let i = 0; i < simCount.value; i++) {
+    if (!simRunning.value) break;
+    const minIdx = counts.value.indexOf(Math.min(...counts.value));
+    await moveToBest(minIdx);
+    simProgress.value = i + 1;
+  }
+  simRunning.value = false;
 }
 
 // コントロール
@@ -364,6 +394,36 @@ function randomize() {
           >
             ↺ ランダム再配置
           </button>
+        </div>
+
+        <!-- 自動最適化 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <p class="text-xs text-gray-500 tracking-widest uppercase mb-3">
+            自動最適化
+          </p>
+          <label class="text-xs text-gray-400 block mb-2">
+            回数:
+            <input
+              type="number"
+              min="1"
+              max="9999"
+              :value="simCount"
+              class="ml-1 w-20 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-white text-xs"
+              @change="simCount = Math.max(1, Number(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <button
+            class="w-full py-2 text-sm rounded-lg border transition-colors"
+            :class="simRunning
+              ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+              : 'border-green-500/40 text-green-400 hover:bg-green-500/10'"
+            @click="runAutoSim"
+          >
+            {{ simRunning ? '■ 停止' : '▶ 実行' }}
+          </button>
+          <div v-if="simRunning || simProgress > 0" class="mt-2 text-xs text-gray-500 text-center">
+            {{ simProgress }} / {{ simCount }}
+          </div>
         </div>
 
         <!-- 使い方 -->
