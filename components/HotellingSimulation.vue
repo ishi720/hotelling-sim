@@ -71,7 +71,7 @@ const storeCount = ref(3);
 const count = ref(100);
 const sim = ref<SimState>(createSim(100));
 const drag = ref<number | null>(null);
-const hovering = ref(false);
+const hoveredIdx = ref<number | null>(null);
 const cvRef = ref<HTMLCanvasElement | null>(null);
 
 // 計算プロパティ
@@ -135,8 +135,8 @@ function draw() {
     ctx.fill();
   }
 
-  // 店舗マーカー
-  for (let i = 0; i < stores.length; i++) {
+  // 店舗マーカー（ホバー中の店舗を最後＝最前面に描画）
+  const drawStore = (i: number) => {
     const cx = toPx(stores[i].x);
     const cy = toPx(stores[i].y);
     ctx.beginPath();
@@ -151,10 +151,14 @@ function draw() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(LABELS[i], cx, cy);
-  }
+  };
+  const hi = hoveredIdx.value ?? drag.value;
+  for (let i = 0; i < stores.length; i++) { if (i !== hi) drawStore(i); }
+  if (hi !== null && hi < stores.length) drawStore(hi);
 }
 
 watch(sim, draw, { deep: true });
+watch(hoveredIdx, draw);
 onMounted(draw);
 
 // ─── ドラッグ操作 ────────────────────────────────────────
@@ -169,11 +173,19 @@ function getPos(e: MouseEvent | TouchEvent): Point {
 
 function onDown(e: MouseEvent | TouchEvent) {
   if (simRunning.value) return;
-  const pos = getPos(e);
-  const idx = sim.value.stores.findIndex((s) => dist(pos, s) < 4);
-  if (idx !== -1) {
-    drag.value = idx;
+  // hoveredIdx がセット済みならその店舗を掴む（マウス）、なければタッチ用フォールバック
+  if (hoveredIdx.value !== null) {
+    drag.value = hoveredIdx.value;
     e.preventDefault();
+    return;
+  }
+  if ('touches' in e) {
+    const pos = getPos(e);
+    const idx = sim.value.stores.reduce<{ i: number; d: number }>(
+      (best, s, i) => { const d = dist(pos, s); return d < best.d ? { i, d } : best; },
+      { i: -1, d: 4 }
+    ).i;
+    if (idx !== -1) { drag.value = idx; e.preventDefault(); }
   }
 }
 
@@ -181,18 +193,19 @@ function onMove(e: MouseEvent | TouchEvent) {
   if (drag.value === null) {
     if (!('touches' in e)) {
       const pos = getPos(e);
-      hovering.value = sim.value.stores.some((s) => dist(pos, s) < 4);
+      // カーソルに最も近い店舗を前面候補に（同距離なら高インデックス優先）
+      let bestD = 4;
+      for (let i = 0; i < sim.value.stores.length; i++) {
+        const d = dist(pos, sim.value.stores[i]);
+        if (d < bestD || (d === bestD && (hoveredIdx.value === null || i > hoveredIdx.value))) {
+          bestD = d; hoveredIdx.value = i;
+        }
+      }
     }
     return;
   }
   e.preventDefault();
   const pos = getPos(e);
-  if (
-    sim.value.stores.some(
-      (s, i) => i !== drag.value && s.x === pos.x && s.y === pos.y
-    )
-  )
-    return;
   const stores = [...sim.value.stores];
   stores[drag.value] = pos;
   sim.value = { ...sim.value, stores };
@@ -200,7 +213,6 @@ function onMove(e: MouseEvent | TouchEvent) {
 
 function onUp() {
   drag.value = null;
-  hovering.value = false;
 }
 
 // 最適位置探索（他店舗を固定し顧客数が最大になるグリッドセルを返す）
@@ -353,7 +365,7 @@ function randomize() {
           :style="{
             width: '100%',
             maxWidth: `${PX}px`,
-            cursor: drag !== null ? 'grabbing' : hovering ? 'grab' : 'default',
+            cursor: drag !== null ? 'grabbing' : hoveredIdx !== null ? 'grab' : 'default',
           }"
           @mousedown="onDown"
           @mousemove="onMove"
