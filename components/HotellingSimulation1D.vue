@@ -59,8 +59,10 @@ function createSim(n: number, sc = storeCount.value): SimState {
 const sim = ref<SimState>(createSim(100));
 const drag = ref<number | null>(null);
 const hoveredIdx = ref<number | null>(null);
+const lastMovedIdx = ref<number | null>(null);
 const cvRef = ref<HTMLCanvasElement | null>(null);
 const animating = ref<boolean[]>(Array(storeCount.value).fill(false));
+watch(animating, draw);
 const simCount = ref(100);
 const simRunning = ref(false);
 const simProgress = ref(0);
@@ -137,13 +139,15 @@ function draw() {
     ctx.textBaseline = "middle";
     ctx.fillText(LABELS[i], cx, cy);
   };
-  const hi = hoveredIdx.value ?? drag.value;
-  for (let i = 0; i < stores.length; i++) { if (i !== hi) drawStore(i); }
-  if (hi !== null && hi < stores.length) drawStore(hi);
+  const animIdx = animating.value.findIndex(v => v);
+  const top = drag.value !== null ? drag.value : animIdx !== -1 ? animIdx : lastMovedIdx.value ?? hoveredIdx.value;
+  for (let i = 0; i < stores.length; i++) { if (i !== top) drawStore(i); }
+  if (top !== null && top < stores.length) drawStore(top);
 }
 
 watch(sim, draw, { deep: true });
 watch(hoveredIdx, draw);
+watch(lastMovedIdx, draw);
 onMounted(draw);
 
 function getGridX(e: MouseEvent | TouchEvent): number {
@@ -241,6 +245,7 @@ async function moveToBest(storeIdx: number) {
     await new Promise((r) => setTimeout(r, 20));
   }
   animating.value = animating.value.map((v, i) => (i === storeIdx ? false : v));
+  lastMovedIdx.value = storeIdx;
 }
 
 async function runAutoSim() {
