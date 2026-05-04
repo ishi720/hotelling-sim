@@ -100,7 +100,7 @@ function draw() {
   const { stores, people } = sim.value;
 
   // 背景
-  ctx.fillStyle = "#111827";
+  ctx.fillStyle = "#0f172a";
   ctx.fillRect(0, 0, PX, PX);
 
   // ボロノイ領域
@@ -348,25 +348,15 @@ function randomize() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-950 text-white p-6 flex flex-col items-center gap-6">
-    <!-- タイトル -->
-    <div class="text-center">
-      <h1 class="text-2xl font-semibold tracking-wide text-gray-100">
-        ホテリングの法則
-      </h1>
-      <p class="text-sm text-gray-500 mt-1 tracking-widest uppercase">
-        Competitive Location Simulation
-      </p>
-    </div>
+  <div class="p-8 flex justify-center">
+    <div class="flex flex-col lg:flex-row gap-8 w-full max-w-4xl">
 
-    <div class="flex flex-col lg:flex-row gap-6 w-full max-w-4xl">
-      <!-- Canvas -->
       <div class="flex-shrink-0">
         <canvas
           ref="cvRef"
           :width="PX"
           :height="PX"
-          class="rounded-xl border border-gray-800 block"
+          class="block rounded-md border border-slate-800"
           :style="{
             width: '100%',
             maxWidth: `${PX}px`,
@@ -382,146 +372,93 @@ function randomize() {
         />
       </div>
 
-      <!-- サイドパネル -->
-      <div class="flex flex-col gap-4 min-w-[220px]">
-        <!-- ステップ実行 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div class="w-full lg:w-52 flex-shrink-0 divide-y divide-slate-800">
+
+        <div class="pb-5">
           <div class="flex items-center justify-between mb-3">
-            <p class="text-xs text-gray-500 tracking-widest uppercase">ステップ実行</p>
-            <label class="text-xs text-gray-400 flex items-center gap-1">
-              回数:
+            <span class="text-xs font-semibold text-slate-400">ステップ実行</span>
+            <label class="text-xs text-slate-500 flex items-center gap-1.5">
+              回数
               <input
-                type="number"
-                min="1"
-                max="9999"
-                :value="simCount"
-                class="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-white text-xs disabled:opacity-40"
+                type="number" min="1" max="9999" :value="simCount"
+                class="w-14 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-slate-200 text-xs text-right disabled:opacity-40"
                 :disabled="simRunning"
                 @change="simCount = Math.max(1, Number(($event.target as HTMLInputElement).value))"
               />
             </label>
           </div>
           <button
-            class="w-full py-2 text-sm rounded-lg border transition-colors"
-            :class="simRunning
-              ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
-              : 'border-green-500/40 text-green-400 hover:bg-green-500/10'"
+            class="w-full py-1.5 text-sm rounded border transition-colors"
+            :class="simRunning ? 'border-red-800 text-red-400 hover:bg-red-950/40' : 'border-emerald-800 text-emerald-400 hover:bg-emerald-950/40'"
             @click="runAutoSim"
-          >
-            {{ simRunning ? '■ 停止' : '▶ 実行' }}
-          </button>
-          <div v-if="simRunning || simProgress > 0" class="mt-2 text-xs text-gray-500 text-center">
+          >{{ simRunning ? '■ 停止' : '▶ 実行' }}</button>
+          <div v-if="simRunning || simProgress > 0" class="mt-1.5 text-[11px] text-slate-600 text-right tabular-nums">
             {{ simProgress }} / {{ simCount }}
           </div>
         </div>
 
-        <!-- マーケットシェア -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <div class="flex items-center justify-between mb-3">
-            <p class="text-xs text-gray-500 tracking-widest uppercase">市場シェア</p>
-            <div class="flex items-center gap-1.5">
+        <div class="py-5">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-semibold text-slate-400">市場シェア</span>
+            <div class="flex items-center gap-1">
               <button
-                class="w-5 h-5 rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                class="w-5 h-5 flex items-center justify-center rounded border border-slate-700 text-slate-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-xs"
                 :disabled="storeCount <= 2 || simRunning"
                 @click="handleStoreCount(storeCount - 1)"
               >－</button>
-              <span class="text-xs text-gray-400 w-3 text-center">{{ storeCount }}</span>
+              <span class="text-xs text-slate-500 w-4 text-center tabular-nums">{{ storeCount }}</span>
               <button
-                class="w-5 h-5 rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                class="w-5 h-5 flex items-center justify-center rounded border border-slate-700 text-slate-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-xs"
                 :disabled="storeCount >= 5 || simRunning"
                 @click="handleStoreCount(storeCount + 1)"
               >＋</button>
             </div>
           </div>
-
-          <div
-            v-for="(label, i) in LABELS.slice(0, sim.stores.length)"
-            :key="label"
-            class="mb-3 last:mb-0"
-          >
-            <div class="flex justify-between items-baseline mb-1">
-              <div class="flex items-center gap-1.5">
-                <span class="text-sm font-medium" :style="{ color: COLORS[i] }">
-                  店舗 {{ label }}
-                </span>
+          <div v-for="(label, i) in LABELS.slice(0, sim.stores.length)" :key="label" class="mb-3 last:mb-0">
+            <div class="flex justify-between items-center mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold" :style="{ color: COLORS[i] }">{{ label }}</span>
                 <button
                   class="text-[10px] px-1.5 py-0.5 rounded border transition-opacity"
                   :style="{
-                    color: animating[i] ? '#6b7280' : COLORS[i],
-                    borderColor: animating[i] ? '#6b728066' : COLORS[i] + '66',
+                    color: animating[i] ? '#475569' : COLORS[i],
+                    borderColor: animating[i] ? '#47556933' : COLORS[i] + '44',
                   }"
                   :disabled="animating[i] || simRunning"
                   :class="animating[i] || simRunning ? 'cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'"
                   @click="moveToBest(i)"
-                  title="顧客数が最大になる位置へ移動"
-                >
-                  {{ animating[i] ? '移動中…' : '最適化' }}
-                </button>
+                >{{ animating[i] ? '移動中' : '最適化' }}</button>
               </div>
-              <span :style="{ color: COLORS[i] }">
-                {{ counts[i] }}
-                <span class="text-gray-500 text-xs ml-1">({{ percents[i] }}%)</span>
-              </span>
+              <span class="text-xs tabular-nums" :style="{ color: COLORS[i] }">{{ percents[i] }}<span class="text-slate-700 text-[10px]">%</span></span>
             </div>
-            <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-              <div
-                class="h-full rounded-full transition-all duration-300"
-                :style="{ width: `${percents[i]}%`, backgroundColor: COLORS[i] }"
-              />
+            <div class="h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-300" :style="{ width: `${percents[i]}%`, backgroundColor: COLORS[i] }" />
             </div>
           </div>
-
-          <div class="mt-3 pt-3 border-t border-gray-800 text-xs text-gray-500">
-            総住民数: {{ sim.people.length }}
-          </div>
+          <div class="mt-4 text-[11px] text-slate-700">住民 {{ sim.people.length }} 人</div>
         </div>
 
-        <!-- コントロール -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="text-xs text-gray-500 tracking-widest uppercase mb-3">
-            設定
-          </p>
-          <label class="text-xs text-gray-400 block mb-2">
-            住民数: {{ count }}
-          </label>
+        <div class="py-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-slate-400">設定</span>
+            <span class="text-[11px] text-slate-600 tabular-nums">{{ count }} 人</span>
+          </div>
           <input
-            type="range"
-            min="10"
-            max="500"
-            step="10"
-            :value="count"
-            :disabled="simRunning"
+            type="range" min="10" max="500" step="10" :value="count" :disabled="simRunning"
             class="w-full accent-blue-500 mb-3 disabled:opacity-40"
             @input="handleCount(Number(($event.target as HTMLInputElement).value))"
           />
           <button
-            class="w-full py-2 text-sm rounded-lg border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            class="w-full py-1.5 text-xs rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="simRunning"
             @click="randomize"
-          >
-            ↺ ランダム再配置
-          </button>
+          >↺ ランダム再配置</button>
         </div>
 
-        <!-- 使い方 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="text-xs text-gray-500 tracking-widest uppercase mb-2">
-            使い方
-          </p>
-          <p class="text-xs text-gray-400 leading-relaxed">
-            店舗をドラッグして位置を変更できます。各住民は最も近い店舗を利用します。
-          </p>
+        <div class="pt-5 text-[11px] leading-relaxed text-slate-600">
+          競合する店舗は市場の中央に集まる傾向があります（ナッシュ均衡）。
         </div>
 
-        <!-- 解説 -->
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p class="text-xs text-gray-500 tracking-widest uppercase mb-2">
-            ホテリングの法則とは
-          </p>
-          <p class="text-xs text-gray-400 leading-relaxed">
-            競合する店舗は市場の中央に集まる傾向があります。これがナッシュ均衡であり、どちらも位置を変えても顧客数を増やせない状態です。
-          </p>
-        </div>
       </div>
     </div>
   </div>

@@ -8,20 +8,23 @@ const tabs = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-950 text-white">
-    <nav class="flex justify-center gap-2 pt-4 pb-0">
-      <NuxtLink
-        v-for="tab in tabs"
-        :key="tab.path"
-        :to="tab.path"
-        class="px-4 py-1.5 text-sm rounded-t-lg border border-b-0 transition-colors"
-        :class="route.path === tab.path
-          ? 'bg-gray-900 border-gray-700 text-white'
-          : 'border-transparent text-gray-500 hover:text-gray-300'"
-      >
-        {{ tab.label }}
-      </NuxtLink>
-    </nav>
+  <div class="min-h-screen bg-slate-950 text-slate-200">
+    <header class="flex items-center gap-6 px-8 h-12 border-b border-slate-800">
+      <span class="text-sm font-medium text-slate-300">ホテリングの法則</span>
+      <nav class="flex h-full">
+        <NuxtLink
+          v-for="tab in tabs"
+          :key="tab.path"
+          :to="tab.path"
+          class="px-3 h-full flex items-center text-sm transition-colors border-b-2 -mb-px"
+          :class="route.path === tab.path
+            ? 'border-blue-500 text-white'
+            : 'border-transparent text-slate-500 hover:text-slate-300'"
+        >
+          {{ tab.label }}
+        </NuxtLink>
+      </nav>
+    </header>
     <NuxtPage />
   </div>
 </template>
