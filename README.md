@@ -3,9 +3,9 @@
 ## 概要
 
 ホテリングの法則とは、競合する企業が互いに立地を近づけていく傾向を説明する経済学の原理です。
+このツールでは **1次元・2次元・3次元** の空間でその挙動をインタラクティブにシミュレーションできます。
 
 <img width="573" height="572" alt="image" src="https://github.com/user-attachments/assets/26d9de9e-70ed-40bf-be51-114aec75cacc" />
-
 
 ## 技術スタック
 
@@ -14,7 +14,8 @@
 | フレームワーク | [Nuxt 3](https://nuxt.com/) |
 | 言語 | TypeScript |
 | スタイリング | Tailwind CSS |
-| 描画 | HTML5 Canvas API |
+| 描画（2D/1D） | HTML5 Canvas API |
+| 描画（3D） | [Three.js](https://threejs.org/) |
 
 ## セットアップ
 
@@ -40,12 +41,17 @@ npm run preview   # プロダクションビルドのプレビュー
 ```
 hotelling-sim/
 ├── components/
-│   └── HotellingSimulation.vue   # シミュレーション本体
+│   ├── HotellingSimulation1D.vue   # 1Dシミュレーション
+│   ├── HotellingSimulation2D.vue   # 2Dシミュレーション
+│   └── HotellingSimulation3D.vue   # 3Dシミュレーション
 ├── pages/
-│   └── index.vue                 # エントリーページ
+│   ├── index.vue                   # 2Dページへリダイレクト
+│   ├── 1d.vue                      # 1Dページ
+│   ├── 2d.vue                      # 2Dページ
+│   └── 3d.vue                      # 3Dページ
 ├── assets/
-│   └── css/main.css              # グローバルスタイル
-├── app.vue                       # ルートレイアウト
+│   └── css/main.css
+├── app.vue                         # ルートレイアウト・ナビゲーション
 ├── nuxt.config.ts
 └── tailwind.config.ts
 ```
