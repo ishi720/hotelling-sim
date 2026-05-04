@@ -1,27 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, toRaw } from "vue";
+import { LABELS, COLORS, DOT_COLORS, AREA_COLORS } from "~/utils/constants";
 
 const N = 200;
 const PX_W = 560;
 const PX_H = 120;
 const S = PX_W / N;
-
-const LABELS = ["A", "B", "C", "D", "E"];
-const COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7"];
-const DOT_COLORS = [
-  "rgba(147,197,253,0.9)",
-  "rgba(252,165,165,0.9)",
-  "rgba(134,239,172,0.9)",
-  "rgba(252,211,77,0.9)",
-  "rgba(216,180,254,0.9)",
-];
-const AREA_COLORS = [
-  "rgba(59,130,246,0.22)",
-  "rgba(239,68,68,0.22)",
-  "rgba(34,197,94,0.22)",
-  "rgba(245,158,11,0.22)",
-  "rgba(168,85,247,0.22)",
-];
 
 interface SimState {
   stores: number[];
@@ -46,8 +30,7 @@ function nearestStore(p: number, stores: number[]): number {
   return idx;
 }
 
-const storeCount = ref(2);
-const count = ref(100);
+const { storeCount, count, simCount, simRunning, simProgress, animating, lastMovedIdx, buildRunAutoSim } = useSimState(100);
 
 function createSim(n: number, sc = storeCount.value): SimState {
   const used = new Set<number>();
@@ -56,16 +39,10 @@ function createSim(n: number, sc = storeCount.value): SimState {
   return { stores, people };
 }
 
-const sim = ref<SimState>(createSim(100));
+const sim = ref<SimState>(createSim(count.value));
 const drag = ref<number | null>(null);
 const hoveredIdx = ref<number | null>(null);
-const lastMovedIdx = ref<number | null>(null);
 const cvRef = ref<HTMLCanvasElement | null>(null);
-const animating = ref<boolean[]>(Array(storeCount.value).fill(false));
-watch(animating, draw);
-const simCount = ref(100);
-const simRunning = ref(false);
-const simProgress = ref(0);
 
 const counts = computed(() => {
   const c = Array(sim.value.stores.length).fill(0);
@@ -78,7 +55,6 @@ const percents = computed(() =>
   )
 );
 
-// 住民のy座標オフセット（見栄え用、固定シード的に決定）
 const peopleY = computed(() =>
   sim.value.people.map((_, i) => {
     const hash = (i * 2654435761) >>> 0;
@@ -96,14 +72,12 @@ function draw() {
   ctx.fillStyle = "#0f172a";
   ctx.fillRect(0, 0, PX_W, PX_H);
 
-  // ボロノイ帯（ライン）
   for (let x = 0; x < N; x++) {
     const idx = nearestStore(x, stores);
     ctx.fillStyle = AREA_COLORS[idx];
     ctx.fillRect(x * S, 0, S, PX_H);
   }
 
-  // 軸ライン
   ctx.strokeStyle = "rgba(255,255,255,0.15)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -111,7 +85,6 @@ function draw() {
   ctx.lineTo(PX_W, PX_H / 2);
   ctx.stroke();
 
-  // 住民ドット（y方向に散らばせて表示）
   for (let pi = 0; pi < people.length; pi++) {
     const idx = nearestStore(people[pi], stores);
     const cx = (people[pi] + 0.5) * S;
@@ -122,7 +95,6 @@ function draw() {
     ctx.fill();
   }
 
-  // 店舗マーカー
   const drawStore = (i: number) => {
     const cx = (stores[i] + 0.5) * S;
     const cy = PX_H / 2;
@@ -148,6 +120,7 @@ function draw() {
 watch(sim, draw, { deep: true });
 watch(hoveredIdx, draw);
 watch(lastMovedIdx, draw);
+watch(animating, draw);
 onMounted(draw);
 
 function getGridX(e: MouseEvent | TouchEvent): number {
@@ -248,18 +221,7 @@ async function moveToBest(storeIdx: number) {
   lastMovedIdx.value = storeIdx;
 }
 
-async function runAutoSim() {
-  if (simRunning.value) { simRunning.value = false; return; }
-  simRunning.value = true;
-  simProgress.value = 0;
-  for (let i = 0; i < simCount.value; i++) {
-    if (!simRunning.value) break;
-    const minIdx = counts.value.indexOf(Math.min(...counts.value));
-    await moveToBest(minIdx);
-    simProgress.value = i + 1;
-  }
-  simRunning.value = false;
-}
+const runAutoSim = buildRunAutoSim(counts, moveToBest);
 
 function usedPositions(): Set<number> {
   const s = sim.value;
@@ -325,74 +287,24 @@ function randomize() { sim.value = createSim(count.value); }
         />
       </div>
 
-      <div class="w-full lg:w-52 flex-shrink-0 divide-y divide-slate-800">
+      <SimSidebar
+        :storeCount="storeCount"
+        :percents="percents"
+        :animating="animating"
+        :simRunning="simRunning"
+        :simCount="simCount"
+        :simProgress="simProgress"
+        :populationCount="count"
+        :populationMax="500"
+        description="1次元では、競合する店舗は直線の中央に集まります（ナッシュ均衡）。"
+        @storeCountChange="handleStoreCount"
+        @moveToBest="moveToBest"
+        @simCountChange="simCount = $event"
+        @runAutoSim="runAutoSim"
+        @populationChange="handleCount"
+        @randomize="randomize"
+      />
 
-        <div class="pb-5">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-slate-400">ステップ実行</span>
-            <label class="text-xs text-slate-500 flex items-center gap-1.5">
-              回数
-              <input type="number" min="1" max="9999" :value="simCount"
-                class="w-14 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-slate-200 text-xs text-right disabled:opacity-40"
-                :disabled="simRunning"
-                @change="simCount = Math.max(1, Number(($event.target as HTMLInputElement).value))" />
-            </label>
-          </div>
-          <button class="w-full py-1.5 text-sm rounded border transition-colors"
-            :class="simRunning ? 'border-red-800 text-red-400 hover:bg-red-950/40' : 'border-emerald-800 text-emerald-400 hover:bg-emerald-950/40'"
-            @click="runAutoSim">{{ simRunning ? '■ 停止' : '▶ 実行' }}</button>
-          <div v-if="simRunning || simProgress > 0" class="mt-1.5 text-[11px] text-slate-600 text-right tabular-nums">{{ simProgress }} / {{ simCount }}</div>
-        </div>
-
-        <div class="py-5">
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-xs font-semibold text-slate-400">市場シェア</span>
-            <div class="flex items-center gap-1">
-              <button class="w-5 h-5 flex items-center justify-center rounded border border-slate-700 text-slate-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-xs"
-                :disabled="storeCount <= 2 || simRunning" @click="handleStoreCount(storeCount - 1)">－</button>
-              <span class="text-xs text-slate-500 w-4 text-center tabular-nums">{{ storeCount }}</span>
-              <button class="w-5 h-5 flex items-center justify-center rounded border border-slate-700 text-slate-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-xs"
-                :disabled="storeCount >= 5 || simRunning" @click="handleStoreCount(storeCount + 1)">＋</button>
-            </div>
-          </div>
-          <div v-for="(label, i) in LABELS.slice(0, sim.stores.length)" :key="label" class="mb-3 last:mb-0">
-            <div class="flex justify-between items-center mb-1.5">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold" :style="{ color: COLORS[i] }">{{ label }}</span>
-                <button
-                  class="text-[10px] px-1.5 py-0.5 rounded border transition-opacity"
-                  :style="{ color: animating[i] ? '#475569' : COLORS[i], borderColor: animating[i] ? '#47556933' : COLORS[i] + '44' }"
-                  :disabled="animating[i] || simRunning"
-                  :class="animating[i] || simRunning ? 'cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'"
-                  @click="moveToBest(i)"
-                >{{ animating[i] ? '移動中' : '最適化' }}</button>
-              </div>
-              <span class="text-xs tabular-nums" :style="{ color: COLORS[i] }">{{ percents[i] }}<span class="text-slate-700 text-[10px]">%</span></span>
-            </div>
-            <div class="h-1 bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all duration-300" :style="{ width: `${percents[i]}%`, backgroundColor: COLORS[i] }" />
-            </div>
-          </div>
-          <div class="mt-4 text-[11px] text-slate-700">住民 {{ sim.people.length }} 人</div>
-        </div>
-
-        <div class="py-5">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-slate-400">設定</span>
-            <span class="text-[11px] text-slate-600 tabular-nums">{{ count }} 人</span>
-          </div>
-          <input type="range" min="10" max="500" step="10" :value="count" :disabled="simRunning"
-            class="w-full accent-blue-500 mb-3 disabled:opacity-40"
-            @input="handleCount(Number(($event.target as HTMLInputElement).value))" />
-          <button class="w-full py-1.5 text-xs rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="simRunning" @click="randomize">↺ ランダム再配置</button>
-        </div>
-
-        <div class="pt-5 text-[11px] leading-relaxed text-slate-600">
-          1次元では、競合する店舗は直線の中央に集まります（ナッシュ均衡）。
-        </div>
-
-      </div>
     </div>
   </div>
 </template>
