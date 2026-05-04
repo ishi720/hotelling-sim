@@ -2,7 +2,7 @@
 const route = useRoute();
 const tabs = [
   { label: "1次元", path: "/1d" },
-  { label: "2次元", path: "/" },
+  { label: "2次元", path: "/2d" },
   { label: "3次元", path: "/3d" },
 ];
 </script>
