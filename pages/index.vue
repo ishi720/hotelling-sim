@@ -1,3 +1,3 @@
 <template>
-  <HotellingSimulation />
+  <HotellingSimulation2D />
 </template>
