@@ -23,7 +23,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="w-full lg:w-52 flex-shrink-0 divide-y divide-slate-800">
+  <div class="w-full lg:w-52 flex-shrink-0">
 
     <div class="pb-5">
       <button class="w-full py-1.5 text-xs rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -45,6 +45,16 @@ const emit = defineEmits<{
         :class="simRunning ? 'border-red-800 text-red-400 hover:bg-red-950/40' : 'border-emerald-800 text-emerald-400 hover:bg-emerald-950/40'"
         @click="emit('runAutoSim')">{{ simRunning ? '■ 停止' : '▶ 実行' }}</button>
       <div v-if="simRunning || simProgress > 0" class="mt-1.5 text-[11px] text-slate-600 text-right tabular-nums">{{ simProgress }} / {{ simCount }}</div>
+    </div>
+
+    <div class="py-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-slate-400">住民数</span>
+        <span class="text-[11px] text-slate-600 tabular-nums">{{ populationCount }} 人</span>
+      </div>
+      <input type="range" min="10" :max="populationMax" step="10" :value="populationCount" :disabled="simRunning"
+        class="w-full accent-blue-500 disabled:opacity-40"
+        @input="emit('populationChange', Number(($event.target as HTMLInputElement).value))" />
     </div>
 
     <div class="py-5">
@@ -76,16 +86,6 @@ const emit = defineEmits<{
           <div class="h-full rounded-full transition-all duration-300" :style="{ width: `${percents[i]}%`, backgroundColor: COLORS[i] }" />
         </div>
       </div>
-    </div>
-
-    <div class="py-5">
-      <div class="flex items-center justify-between mb-3">
-        <span class="text-xs font-semibold text-slate-400">住民数</span>
-        <span class="text-[11px] text-slate-600 tabular-nums">{{ populationCount }} 人</span>
-      </div>
-      <input type="range" min="10" :max="populationMax" step="10" :value="populationCount" :disabled="simRunning"
-        class="w-full accent-blue-500 disabled:opacity-40"
-        @input="emit('populationChange', Number(($event.target as HTMLInputElement).value))" />
     </div>
 
   </div>
