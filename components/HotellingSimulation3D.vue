@@ -164,7 +164,8 @@ function rebuildScene(THREE?: any) {
   }
 }
 
-watch(sim, () => rebuildScene(), { deep: true });
+let skipRebuild = false;
+watch(sim, () => { if (!skipRebuild) rebuildScene(); }, { deep: true });
 
 onMounted(() => initThree());
 
@@ -213,6 +214,7 @@ async function moveToBest(storeIdx: number) {
   if (animating.value[storeIdx]) return;
   const target = await findBestPosition(storeIdx);
   animating.value = animating.value.map((v, i) => (i === storeIdx ? true : v));
+  skipRebuild = true;
   while (true) {
     const cur = sim.value.stores[storeIdx];
     if (cur.x === target.x && cur.y === target.y && cur.z === target.z) break;
@@ -224,9 +226,15 @@ async function moveToBest(storeIdx: number) {
     const stores = [...sim.value.stores];
     stores[storeIdx] = next;
     sim.value = { ...sim.value, stores };
+    if (storeObjects[storeIdx]) {
+      const w = toWorld(next);
+      storeObjects[storeIdx].position.set(w.x, w.y, w.z);
+    }
     await new Promise((r) => setTimeout(r, 30));
   }
+  skipRebuild = false;
   animating.value = animating.value.map((v, i) => (i === storeIdx ? false : v));
+  rebuildScene();
 }
 
 const runAutoSim = buildRunAutoSim(counts, moveToBest);
