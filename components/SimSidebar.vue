@@ -10,7 +10,6 @@ defineProps<{
   simProgress: number;
   populationCount: number;
   populationMax: number;
-  description: string;
 }>();
 
 const emit = defineEmits<{
@@ -45,7 +44,7 @@ const emit = defineEmits<{
 
     <div class="py-5">
       <div class="flex items-center justify-between mb-4">
-        <span class="text-xs font-semibold text-slate-400">市場シェア</span>
+        <span class="text-xs font-semibold text-slate-400">競合店舗</span>
         <div class="flex items-center gap-1">
           <button class="w-5 h-5 flex items-center justify-center rounded border border-slate-700 text-slate-400 hover:text-white transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-xs"
             :disabled="storeCount <= 2 || simRunning" @click="emit('storeCountChange', storeCount - 1)">－</button>
@@ -72,12 +71,11 @@ const emit = defineEmits<{
           <div class="h-full rounded-full transition-all duration-300" :style="{ width: `${percents[i]}%`, backgroundColor: COLORS[i] }" />
         </div>
       </div>
-      <div class="mt-4 text-[11px] text-slate-700">住民 {{ populationCount }} 人</div>
     </div>
 
     <div class="py-5">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-xs font-semibold text-slate-400">設定</span>
+        <span class="text-xs font-semibold text-slate-400">住民数</span>
         <span class="text-[11px] text-slate-600 tabular-nums">{{ populationCount }} 人</span>
       </div>
       <input type="range" min="10" :max="populationMax" step="10" :value="populationCount" :disabled="simRunning"
@@ -85,10 +83,6 @@ const emit = defineEmits<{
         @input="emit('populationChange', Number(($event.target as HTMLInputElement).value))" />
       <button class="w-full py-1.5 text-xs rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         :disabled="simRunning" @click="emit('randomize')">↺ ランダム再配置</button>
-    </div>
-
-    <div class="pt-5 text-[11px] leading-relaxed text-slate-600">
-      {{ description }}
     </div>
 
   </div>
