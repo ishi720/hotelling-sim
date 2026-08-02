@@ -5,6 +5,9 @@ const tabs = [
   { label: "2次元", path: "/2d" },
   { label: "3次元", path: "/3d" },
 ];
+
+// GitHub Pagesは /2d のようなアクセスを /2d/ に301リダイレクトするため末尾スラッシュを正規化して比較する
+const currentPath = computed(() => route.path.replace(/\/+$/, "") || "/");
 </script>
 
 <template>
@@ -17,7 +20,7 @@ const tabs = [
           :key="tab.path"
           :to="tab.path"
           class="px-3 h-full flex items-center text-sm transition-colors border-b-2 -mb-px"
-          :class="route.path === tab.path
+          :class="currentPath === tab.path
             ? 'border-blue-500 text-white'
             : 'border-transparent text-slate-500 hover:text-slate-300'"
         >
