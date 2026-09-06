@@ -1,4 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+
+// Googleアナリティクスの測定ID
+const gaId = process.env.GA_ID;
+
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
@@ -10,12 +14,14 @@ export default defineNuxtConfig({
     baseURL: '/hotelling-sim/',
     head: {
       title: "ホテリングの法則シミュレーション",
-      script: [
-        { src: "https://www.googletagmanager.com/gtag/js?id=G-KH1ZJRPR4J", async: true },
-        {
-          innerHTML: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-KH1ZJRPR4J');`,
-        },
-      ],
+      script: gaId
+        ? [
+            { src: `https://www.googletagmanager.com/gtag/js?id=${gaId}`, async: true },
+            {
+              innerHTML: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`,
+            },
+          ]
+        : [],
       meta: [
         { charset: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },

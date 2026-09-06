@@ -31,6 +31,8 @@ jobs:
 
       - name: Generate static files
         run: npm run generate
+        env:
+          GA_ID: ${{ vars.GA_ID }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
